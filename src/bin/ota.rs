@@ -88,6 +88,21 @@ fn parse_args<'a>() -> ArgMatches<'a> {
           (setting: AppSettings::UnifiedHelpMessage)
           (@arg campaign: -c --campaign <uuid> "The campaign id")
         )
+
+       (@subcommand createupdate =>
+        (about: "create a campaign update")
+        (setting: AppSettings::UnifiedHelpMessage)
+        (setting: AppSettings::ArgRequiredElseHelp)
+
+        (@arg update: -u --update <uuid> "Multi-target update id")
+        (@arg name: -n --name <name> "update name")
+        (@arg description: -d --description <description> "The update description")
+       )
+
+       (@subcommand listupdates =>
+          (about: "List campaign updates")
+          (setting: AppSettings::UnifiedHelpMessage)
+       )
       )
 
       (@subcommand device =>
