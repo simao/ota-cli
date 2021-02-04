@@ -23,7 +23,7 @@ pub struct Reposerver;
 
 impl ReposerverApi for Reposerver {
     fn add_package(config: &mut Config, package: TufPackage) -> Result<Response> {
-        let entry = format!("{}_{}", package.name, package.version);
+        let entry = format!("{}-{}", package.name, package.version);
         debug!("adding package with entry name {}", entry);
         let req = Client::new()
             .put(&format!("{}api/v1/user_repo/targets/{}", config.reposerver, entry))
