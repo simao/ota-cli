@@ -43,12 +43,17 @@ impl<'a> Config {
         let campaigner = args.value_of("campaigner").expect("--campaigner").parse()?;
         let director = args.value_of("director").expect("--director").parse()?;
         let registry = args.value_of("registry").expect("--registry").parse()?;
-        Self::init(credentials, campaigner, director, registry)
+
+        let reposerver = match args.value_of("reposerver") {
+            Some(s) => s.parse()?,
+            None => Self::reposerver_url(&credentials)?,
+        };
+
+        Self::init(credentials, campaigner, director, registry, reposerver)
     }
 
     /// Initialize a new config file.
-    pub fn init(credentials_zip: PathBuf, campaigner: Url, director: Url, registry: Url) -> Result<()> {
-        let reposerver = Self::reposerver_url(&credentials_zip)?;
+    pub fn init(credentials_zip: PathBuf, campaigner: Url, director: Url, registry: Url, reposerver: Url) -> Result<()> {
         Config {
             credentials_zip,
             credentials: None,
