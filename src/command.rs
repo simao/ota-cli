@@ -1,16 +1,17 @@
 use clap::ArgMatches;
-use reqwest::Response;
+use reqwest::blocking::Response;
 use std::str::FromStr;
 
-use api::{
+use crate::api::{
     campaigner::{Campaigner, CampaignerApi},
     director::{Director, DirectorApi, TargetRequests, TufUpdates},
     registry::{DeviceType, GroupType, Registry, RegistryApi},
     reposerver::{Reposerver, ReposerverApi, TargetPackages, TufPackage, TufPackages},
 };
-use config::Config;
-use error::{Error, Result};
-
+use crate::config::Config;
+use crate::error::{Error, Result};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Execute a command then handle the HTTP `Response`.
 pub trait Exec<'a> {
@@ -92,7 +93,7 @@ impl<'a> Exec<'a> for Campaign {
             Campaign::Create => Campaigner::create_from_args(&mut config, args),
             Campaign::Launch => Campaigner::launch_campaign(&mut config, campaign()?),
             Campaign::Cancel => Campaigner::cancel_campaign(&mut config, campaign()?),
-            Campaign::ListUpdates  => Campaigner::list_updates(&mut config),
+            Campaign::ListUpdates  => Campaigner::list_updates(&mut config,),
             Campaign::CreateUpdate  => Campaigner::create_update(&mut config, update()?, name(), description())
         }.and_then(reply)
     }
@@ -218,7 +219,7 @@ impl<'a> Exec<'a> for Package {
 
         #[cfg_attr(rustfmt, rustfmt_skip)]
         match self {
-            Package::List   => Reposerver::list_packages(&mut config),
+            Package::List   => Reposerver::list_packages(&mut config,),
             Package::Add    => Reposerver::add_package(&mut config, TufPackage::from_args(args)?),
             Package::Fetch  => Reposerver::get_package(&mut config, name(), version()),
             Package::Upload => Reposerver::add_packages(&mut config, TufPackages::from(TargetPackages::from_file(packages())?)?),

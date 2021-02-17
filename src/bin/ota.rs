@@ -18,7 +18,7 @@ fn main() -> Result<()> {
     pretty_env_logger::formatted_builder()
         .filter(None, LevelFilter::max())
         .filter(Some("tokio"), LevelFilter::Info)
-        .parse(args.value_of("level").unwrap_or("info"))
+        .parse_filters(args.value_of("level").unwrap_or("info"))
         .init();
 
     let (cmd, args) = args.subcommand();

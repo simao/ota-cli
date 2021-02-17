@@ -1,18 +1,19 @@
-use reqwest::Client;
+use reqwest::blocking::Client;
 use serde_json;
 use std::{fs::File, io::BufReader, path::Path};
 use url::Url;
-use url_serde;
 use zip::ZipArchive;
 
-use config::Config;
-use error::{Error, Result};
-use http::Http;
+use crate::config::Config;
+use crate::error::{Error, Result};
+use crate::http::Http;
+use serde::Serialize;
+use serde::Deserialize;
 
 
 /// Available Auth+ API methods.
 pub trait AuthPlusApi {
-    fn refresh_token(&mut Config) -> Result<Option<AccessToken>>;
+    fn refresh_token(_: &mut Config) -> Result<Option<AccessToken>>;
 }
 
 /// Make API calls to Auth+.
@@ -101,6 +102,5 @@ struct OAuth2 {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct Ostree {
-    #[serde(with = "url_serde")]
     server: Url,
 }

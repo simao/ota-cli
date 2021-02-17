@@ -1,22 +1,22 @@
 use clap::ArgMatches;
-use reqwest::{multipart::Form, Client, Response};
+use reqwest::blocking::multipart::Form;
+use reqwest::blocking::{Client, Response};
 use std::{collections::HashMap, fs, path::Path};
 use toml;
 use url::Url;
-use url_serde;
 use urlencoding;
-
-use api::director::TargetFormat;
-use config::Config;
-use error::{Error, Result};
-use http::{Http, HttpMethods};
+use serde::{Serialize, Deserialize};
+use crate::api::director::TargetFormat;
+use crate::config::Config;
+use crate::error::{Error, Result};
+use crate::http::{Http, HttpMethods};
 
 
 /// Available TUF Reposerver API methods.
 pub trait ReposerverApi {
-    fn add_package(&mut Config, package: TufPackage) -> Result<Response>;
-    fn get_package(&mut Config, name: &str, version: &str) -> Result<Response>;
-    fn list_packages(&mut Config) -> Result<Response>;
+    fn add_package(_: &mut Config, package: TufPackage) -> Result<Response>;
+    fn get_package(_: &mut Config, name: &str, version: &str) -> Result<Response>;
+    fn list_packages(_: &mut Config) -> Result<Response>;
 }
 
 /// Make API calls to the TUF Reposerver.
@@ -163,7 +163,6 @@ impl TufPackages {
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub enum RepoTarget {
     Path(String),
-    #[serde(with = "url_serde")]
     Url(Url),
 }
 

@@ -1,10 +1,10 @@
-use reqwest::{Client, RequestBuilder, Response, Url};
+use reqwest::blocking::{Client, RequestBuilder, Response};
+use reqwest::Url;
 use serde_json::{self, Value};
 use std::io::{self, Read};
 
-use api::auth_plus::AccessToken;
-use error::{Error, Result};
-
+use crate::api::auth_plus::AccessToken;
+use crate::error::{Error, Result};
 
 /// Convenience methods for making simple HTTP requests.
 pub trait HttpMethods {
@@ -49,7 +49,7 @@ impl Http {
             info!("request headers:\n{:#?}", req.headers());
         }
         if let Some(body) = req.body() {
-            info!("request body:\n{:?}\n", body);
+            info!("request body:\n{:#?}\n", body);
         }
 
         Client::new().execute(req).map_err(Error::Http)

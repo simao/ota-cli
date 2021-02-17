@@ -1,6 +1,6 @@
 use clap::ArgMatches;
-use reqwest::{Client, Response};
-use serde::{self, Deserialize, Deserializer};
+use reqwest::blocking::{Client, Response};
+use serde::{self, Deserialize, Deserializer, Serialize};
 use std::{
     collections::HashMap,
     fmt::{self, Display, Formatter},
@@ -12,17 +12,17 @@ use std::{
 use toml;
 use uuid::Uuid;
 
-use config::Config;
-use error::{Error, Result};
-use http::{Http, HttpMethods};
+use crate::config::Config;
+use crate::error::{Error, Result};
+use crate::http::{Http, HttpMethods};
 
 
 /// Available director API methods.
 pub trait DirectorApi {
     /// Create a new multi-target update.
-    fn create_mtu(&mut Config, updates: &TufUpdates) -> Result<Response>;
+    fn create_mtu(_: &mut Config, updates: &TufUpdates) -> Result<Response>;
     /// Launch a multi-target update for a device.
-    fn launch_mtu(&mut Config, update: Uuid, device: Uuid) -> Result<Response>;
+    fn launch_mtu(_: &mut Config, update: Uuid, device: Uuid) -> Result<Response>;
 }
 
 

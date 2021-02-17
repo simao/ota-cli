@@ -1,6 +1,7 @@
 use clap::ArgMatches;
 use dirs;
 use serde_json;
+use serde::{Serialize, Deserialize};
 use std::{
     fs::{self, File, OpenOptions},
     io::{BufReader, ErrorKind, Read, Write},
@@ -8,11 +9,10 @@ use std::{
     str::FromStr,
 };
 use url::Url;
-use url_serde;
 use zip::ZipArchive;
 
-use api::auth_plus::{AccessToken, AuthPlus, AuthPlusApi, Credentials};
-use error::{Error, Result};
+use crate::api::auth_plus::{AccessToken, AuthPlus, AuthPlusApi, Credentials};
+use crate::error::{Error, Result};
 
 
 const CONFIG_FILE: &str = ".ota.conf";
@@ -26,13 +26,9 @@ pub struct Config {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub token: Option<AccessToken>,
 
-    #[serde(with = "url_serde")]
     pub campaigner: Url,
-    #[serde(with = "url_serde")]
     pub director: Url,
-    #[serde(with = "url_serde")]
     pub registry: Url,
-    #[serde(with = "url_serde")]
     pub reposerver: Url,
 }
 
