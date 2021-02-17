@@ -6,13 +6,11 @@ extern crate pretty_env_logger;
 extern crate reqwest;
 extern crate serde;
 #[macro_use]
-extern crate serde_derive;
-#[macro_use]
 extern crate serde_json;
 extern crate serde_urlencoded;
 extern crate toml;
 extern crate url;
-extern crate url_serde;
+// extern crate url_serde;
 extern crate urlencoding;
 extern crate uuid;
 extern crate zip;

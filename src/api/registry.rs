@@ -1,31 +1,31 @@
 use clap::ArgMatches;
-use reqwest::{Client, Response};
+use reqwest::blocking::{Client, Response};
 use std::{
     fmt::{self, Display, Formatter},
     str::FromStr,
 };
 use uuid::Uuid;
 
-use config::Config;
-use error::{Error, Result};
-use http::{Http, HttpMethods};
+use crate::config::Config;
+use crate::error::{Error, Result};
+use crate::http::{Http, HttpMethods};
 
 
 /// Available Device Registry API methods.
 pub trait RegistryApi {
-    fn create_device(&mut Config, name: &str, id: &str, kind: DeviceType) -> Result<Response>;
-    fn delete_device(&mut Config, device: Uuid) -> Result<Response>;
-    fn list_device(&mut Config, device: Uuid) -> Result<Response>;
-    fn list_all_devices(&mut Config) -> Result<Response>;
+    fn create_device(_: &mut Config, name: &str, id: &str, kind: DeviceType) -> Result<Response>;
+    fn delete_device(_: &mut Config, device: Uuid) -> Result<Response>;
+    fn list_device(_: &mut Config, device: Uuid) -> Result<Response>;
+    fn list_all_devices(_: &mut Config) -> Result<Response>;
 
-    fn create_group(&mut Config, name: &str, group_type: GroupType) -> Result<Response>;
-    fn rename_group(&mut Config, group: Uuid, name: &str) -> Result<Response>;
-    fn add_to_group(&mut Config, group: Uuid, device: Uuid) -> Result<Response>;
-    fn remove_from_group(&mut Config, group: Uuid, device: Uuid) -> Result<Response>;
+    fn create_group(_: &mut Config, name: &str, group_type: GroupType) -> Result<Response>;
+    fn rename_group(_: &mut Config, group: Uuid, name: &str) -> Result<Response>;
+    fn add_to_group(_: &mut Config, group: Uuid, device: Uuid) -> Result<Response>;
+    fn remove_from_group(_: &mut Config, group: Uuid, device: Uuid) -> Result<Response>;
 
-    fn list_groups(&mut Config, device: Uuid) -> Result<Response>;
-    fn list_devices(&mut Config, group: Uuid) -> Result<Response>;
-    fn list_all_groups(&mut Config) -> Result<Response>;
+    fn list_groups(_: &mut Config, device: Uuid) -> Result<Response>;
+    fn list_devices(_: &mut Config, group: Uuid) -> Result<Response>;
+    fn list_all_groups(_: &mut Config) -> Result<Response>;
 }
 
 
