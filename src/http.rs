@@ -32,12 +32,15 @@ impl Http {
     /// Send an HTTP request with an optional bearer token.
     pub fn send(mut builder: RequestBuilder, token: Option<AccessToken>) -> Result<Response> {
         if let Some(token) = token {
-            debug!("request with token scopes: {}", token.scope);
+            debug!("request with token scopes: {:?}", token);
             builder = builder.bearer_auth(token.access_token.clone());
 
             match token.namespace() {
-                Ok(name) => builder = builder.header("x-ats-namespace", name),
-                Err(err) => error!("reading token namespace: {}", err),
+                Ok(name) =>
+                    builder = builder.header("x-ats-namespace", name),
+                Err(err) => {
+                    error!("reading token namespace: {}", err)
+                }
             }
         }
 
