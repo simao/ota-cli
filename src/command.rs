@@ -74,12 +74,17 @@ pub enum Campaign {
     Create,
     Launch,
     Cancel,
+    ListUpdates,
+    CreateUpdate,
 }
 
 impl<'a> Exec<'a> for Campaign {
     fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(Response) -> Result<()>) -> Result<()> {
         let mut config = Config::load_default()?;
         let campaign = || args.value_of("campaign").expect("--campaign").parse();
+        let update = || args.value_of("update").expect("--update").parse();
+        let name = || args.value_of("name").expect("--name");
+        let description = || args.value_of("description").expect("--description");
 
         #[cfg_attr(rustfmt, rustfmt_skip)]
         match self {
@@ -87,6 +92,8 @@ impl<'a> Exec<'a> for Campaign {
             Campaign::Create => Campaigner::create_from_args(&mut config, args),
             Campaign::Launch => Campaigner::launch_campaign(&mut config, campaign()?),
             Campaign::Cancel => Campaigner::cancel_campaign(&mut config, campaign()?),
+            Campaign::ListUpdates  => Campaigner::list_updates(&mut config),
+            Campaign::CreateUpdate  => Campaigner::create_update(&mut config, update()?, name(), description())
         }.and_then(reply)
     }
 }
@@ -101,6 +108,8 @@ impl FromStr for Campaign {
             "create" => Ok(Campaign::Create),
             "launch" => Ok(Campaign::Launch),
             "cancel" => Ok(Campaign::Cancel),
+            "createupdate" => Ok(Campaign::CreateUpdate),
+            "listupdates" => Ok(Campaign::ListUpdates),
             _ => Err(Error::Command(format!("unknown campaign subcommand: {}", s))),
         }
     }
@@ -237,7 +246,7 @@ impl FromStr for Package {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Copy, Debug)]
 pub enum Update {
     Create,
-    Launch,
+    Launch
 }
 
 impl<'a> Exec<'a> for Update {
