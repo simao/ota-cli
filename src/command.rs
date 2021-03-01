@@ -1,5 +1,4 @@
 use clap::ArgMatches;
-use reqwest::blocking::Response;
 use std::str::FromStr;
 
 use crate::api::{
@@ -10,13 +9,13 @@ use crate::api::{
 };
 use crate::config::Config;
 use crate::error::{Error, Result};
-use crate::http::PrintableH;
+use crate::http::{PrintableWrapped};
 use serde::Deserialize;
 use serde::Serialize;
 
 /// Execute a command then handle the HTTP `Response`.
 pub trait Exec<'a> {
-    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(PrintableH) -> Result<()>) -> Result<()>;
+    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(PrintableWrapped) -> Result<()>) -> Result<()>;
 }
 
 /// Available CLI sub-commands.
@@ -31,7 +30,7 @@ pub enum Command {
 }
 
 impl<'a> Exec<'a> for Command {
-    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(PrintableH) -> Result<()>) -> Result<()> {
+    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(PrintableWrapped) -> Result<()>) -> Result<()> {
         if let Command::Init = self {
             Config::init_from_args(args)
         } else {
@@ -79,7 +78,7 @@ pub enum Campaign {
 }
 
 impl<'a> Exec<'a> for Campaign {
-    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(PrintableH) -> Result<()>) -> Result<()> {
+    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(PrintableWrapped) -> Result<()>) -> Result<()> {
         let mut config = Config::load_default()?;
         let campaign = || args.value_of("campaign").expect("--campaign").parse();
         let update = || args.value_of("update").expect("--update").parse();
@@ -126,7 +125,7 @@ pub enum Device {
 }
 
 impl<'a> Exec<'a> for Device {
-    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(PrintableH) -> Result<()>) -> Result<()> {
+    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(PrintableWrapped) -> Result<()>) -> Result<()> {
         let mut config = Config::load_default()?;
         let device = || args.value_of("device").expect("--device").parse();
         let name = || args.value_of("name").expect("--name");
@@ -168,7 +167,7 @@ pub enum Group {
 }
 
 impl<'a> Exec<'a> for Group {
-    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(PrintableH) -> Result<()>) -> Result<()> {
+    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(PrintableWrapped) -> Result<()>) -> Result<()> {
         let mut config = Config::load_default()?;
         let group = || args.value_of("group").expect("--group").parse();
         let device = || args.value_of("device").expect("--device").parse();
@@ -213,7 +212,7 @@ pub enum Package {
 }
 
 impl<'a> Exec<'a> for Package {
-    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(PrintableH) -> Result<()>) -> Result<()> {
+    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(PrintableWrapped) -> Result<()>) -> Result<()> {
         let mut config = Config::load_default()?;
         let name = || args.value_of("name").expect("--name");
         let version = || args.value_of("version").expect("--version");
@@ -254,7 +253,7 @@ pub enum Update {
 }
 
 impl<'a> Exec<'a> for Update {
-    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(PrintableH) -> Result<()>) -> Result<()> {
+    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(PrintableWrapped) -> Result<()>) -> Result<()> {
         let mut config = Config::load_default()?;
         let update = || args.value_of("update").expect("--update").parse();
         let device = || args.value_of("device").expect("--device").parse();

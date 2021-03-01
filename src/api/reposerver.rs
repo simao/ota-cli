@@ -1,10 +1,10 @@
 use crate::api::director::TargetFormat;
 use crate::config::Config;
 use crate::error::{Error, Result};
-use crate::http::{Http, HttpMethods, PrintableH, TableResponse};
+use crate::http::{Http, HttpMethods, PrintableWrapped, TableResponse};
 use clap::ArgMatches;
 use reqwest::blocking::multipart::Form;
-use reqwest::blocking::{Client, Response};
+use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs, path::Path};
 use toml;
@@ -27,16 +27,20 @@ struct Target {
 }
 
 #[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 struct Custom {
     name: String,
-    version: String
+    version: String,
+    hardware_ids: Vec<String>,
+    uri: Option<Url>,
+    updated_at: String,
 }
 
 /// Available TUF Reposerver API methods.
 pub trait ReposerverApi {
-    fn add_package(_: &mut Config, package: TufPackage) -> Result<PrintableH>;
-    fn get_package(_: &mut Config, name: &str, version: &str) -> Result<PrintableH>;
-    fn list_packages(_: &mut Config) -> Result<PrintableH>;
+    fn add_package(_: &mut Config, package: TufPackage) -> Result<PrintableWrapped>;
+    fn get_package(_: &mut Config, name: &str, version: &str) -> Result<PrintableWrapped>;
+    fn list_packages(_: &mut Config) -> Result<PrintableWrapped>;
 }
 
 /// Make API calls to the TUF Reposerver.
@@ -46,7 +50,7 @@ use comfy_table::Table;
 
 
 impl ReposerverApi for Reposerver {
-    fn add_package(config: &mut Config, package: TufPackage) -> Result<PrintableH> {
+    fn add_package(config: &mut Config, package: TufPackage) -> Result<PrintableWrapped> {
         let entry = format!("{}-{}", package.name, package.version);
         debug!("adding package with entry name {}", entry);
         let req = Client::new()
@@ -64,23 +68,25 @@ impl ReposerverApi for Reposerver {
         Ok(Http::send(req, config.token()?)?.into())
     }
 
-    fn get_package(config: &mut Config, name: &str, version: &str) -> Result<PrintableH> {
+    fn get_package(config: &mut Config, name: &str, version: &str) -> Result<PrintableWrapped> {
         let entry = format!("{}_{}", name, version);
         debug!("fetching package with entry name {}", entry);
         Ok(Http::get(&format!("{}api/v1/user_repo/targets/{}", config.reposerver, entry), config.token()?)?.into())
     }
 
-    fn list_packages(config: &mut Config) -> Result<PrintableH> {
+    fn list_packages(config: &mut Config) -> Result<PrintableWrapped> {
         let res = Http::get(&format!("{}api/v1/user_repo/targets.json", config.reposerver), config.token()?)?;
         let h = res.headers().to_owned();
         let v: TargetRole = res.json()?;
 
         let mut table = Table::new();
 
-        table.set_table_width(40);
+        table.set_header(vec!["name", "name", "version", "hardware ids", "uri", "updated at"]);
 
         for (k, v) in v.signed.targets {
-            table.add_row(vec![k, format!("{:?}", v.custom)]);
+            let hwids = format!("{}", v.custom.hardware_ids.join(", "));
+            let uri = v.custom.uri.map(|u| u.to_string()).unwrap_or("None".to_owned()) ;
+            table.add_row(vec![k, v.custom.name, v.custom.version, hwids, uri, v.custom.updated_at]);
         }
 
         Ok(TableResponse { headers: h, str: table.to_string() }.into())
@@ -89,7 +95,7 @@ impl ReposerverApi for Reposerver {
 
 impl Reposerver {
     /// Upload multiple packages (without batching), returning the final response.
-    pub fn add_packages(config: &mut Config, packages: TufPackages) -> Result<PrintableH> {
+    pub fn add_packages(config: &mut Config, packages: TufPackages) -> Result<PrintableWrapped> {
         let mut responses = packages
             .packages
             .into_iter()

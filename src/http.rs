@@ -25,19 +25,25 @@ pub trait HttpMethods {
     }
 }
 
-pub struct PrintableH {
+trait PrintableResponse {
+    fn headers(&mut self) -> HashMap<String, String>;
+
+    fn read(&mut self, buf: &mut Vec<u8>) -> Result<usize>;
+}
+
+pub struct PrintableWrapped {
     inner: Box<dyn PrintableResponse>,
 }
 
-impl From<Response> for PrintableH {
+impl From<Response> for PrintableWrapped {
     fn from(r: Response) -> Self {
-        PrintableH { inner: Box::new(r) }
+        PrintableWrapped { inner: Box::new(r) }
     }
 }
 
-impl From<TableResponse> for PrintableH {
+impl From<TableResponse> for PrintableWrapped {
     fn from(r: TableResponse) -> Self {
-        PrintableH { inner: Box::new(r) }
+        PrintableWrapped { inner: Box::new(r) }
     }
 }
 
@@ -56,22 +62,6 @@ impl PrintableResponse for TableResponse {
     }
 }
 
-trait PrintableResponse {
-    fn headers(&mut self) -> HashMap<String, String>;
-
-    fn read(&mut self, buf: &mut Vec<u8>) -> Result<usize>;
-}
-
-impl PrintableH {
-    fn headers(&mut self) -> HashMap<String, String> {
-        self.inner.headers()
-    }
-
-    fn read(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
-        self.inner.read(buf)
-    }
-}
-
 impl PrintableResponse for Response {
     fn headers(&mut self) -> HashMap<String, String> {
         let mut res: HashMap<String, String> = HashMap::new();
@@ -85,6 +75,16 @@ impl PrintableResponse for Response {
 
     fn read(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
         Ok(self.read_to_end(buf)?)
+    }
+}
+
+impl PrintableResponse for PrintableWrapped {
+    fn headers(&mut self) -> HashMap<String, String, RandomState> {
+        self.inner.headers()
+    }
+
+    fn read(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
+        self.inner.read(buf)
     }
 }
 
@@ -120,7 +120,7 @@ impl Http {
     }
 
     /// Print the HTTP response to stdout.
-    pub fn print_response(mut resp: PrintableH) -> Result<()> {
+    pub fn print_response(mut resp: PrintableWrapped) -> Result<()> {
         let mut body = Vec::new();
         debug!("response headers:\n{:#?}", resp.headers());
         debug!("response length: {}\n", resp.read(&mut body)?);

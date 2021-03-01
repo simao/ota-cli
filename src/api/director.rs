@@ -14,7 +14,7 @@ use uuid::Uuid;
 
 use crate::config::Config;
 use crate::error::{Error, Result};
-use crate::http::{Http, HttpMethods, PrintableH};
+use crate::http::{Http, HttpMethods};
 
 /// Available director API methods.
 pub trait DirectorApi {
