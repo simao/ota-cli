@@ -10,7 +10,6 @@ use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::http::{Http, HttpMethods};
 
-
 /// Available Device Registry API methods.
 pub trait RegistryApi {
     fn create_device(_: &mut Config, name: &str, id: &str, kind: DeviceType) -> Result<Response>;
@@ -27,7 +26,6 @@ pub trait RegistryApi {
     fn list_devices(_: &mut Config, group: Uuid) -> Result<Response>;
     fn list_all_groups(_: &mut Config) -> Result<Response>;
 }
-
 
 /// Make API calls to manage device groups.
 pub struct Registry;
@@ -133,7 +131,6 @@ impl RegistryApi for Registry {
     }
 }
 
-
 /// Available device types.
 #[derive(Clone, Copy, Debug)]
 pub enum DeviceType {
@@ -178,7 +175,6 @@ impl Display for DeviceType {
     }
 }
 
-
 /// Available group types.
 #[derive(Clone, Copy, Debug)]
 pub enum GroupType {
@@ -209,7 +205,6 @@ impl Display for GroupType {
         write!(f, "{}", text)
     }
 }
-
 
 /// Parse into a tuple of --all, --device, and --group arg values.
 fn parse_list_args<'a>(args: &ArgMatches<'a>) -> Result<(bool, Option<Uuid>, Option<Uuid>)> {

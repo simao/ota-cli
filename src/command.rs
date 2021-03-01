@@ -10,14 +10,14 @@ use crate::api::{
 };
 use crate::config::Config;
 use crate::error::{Error, Result};
+use crate::http::PrintableH;
 use serde::Deserialize;
 use serde::Serialize;
 
 /// Execute a command then handle the HTTP `Response`.
 pub trait Exec<'a> {
-    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(Response) -> Result<()>) -> Result<()>;
+    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(PrintableH) -> Result<()>) -> Result<()>;
 }
-
 
 /// Available CLI sub-commands.
 #[derive(Serialize, Deserialize, PartialEq, Clone, Copy, Debug)]
@@ -31,7 +31,7 @@ pub enum Command {
 }
 
 impl<'a> Exec<'a> for Command {
-    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(Response) -> Result<()>) -> Result<()> {
+    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(PrintableH) -> Result<()>) -> Result<()> {
         if let Command::Init = self {
             Config::init_from_args(args)
         } else {
@@ -67,7 +67,6 @@ impl FromStr for Command {
     }
 }
 
-
 /// Available campaign sub-commands.
 #[derive(Serialize, Deserialize, PartialEq, Clone, Copy, Debug)]
 pub enum Campaign {
@@ -80,7 +79,7 @@ pub enum Campaign {
 }
 
 impl<'a> Exec<'a> for Campaign {
-    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(Response) -> Result<()>) -> Result<()> {
+    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(PrintableH) -> Result<()>) -> Result<()> {
         let mut config = Config::load_default()?;
         let campaign = || args.value_of("campaign").expect("--campaign").parse();
         let update = || args.value_of("update").expect("--update").parse();
@@ -95,7 +94,9 @@ impl<'a> Exec<'a> for Campaign {
             Campaign::Cancel => Campaigner::cancel_campaign(&mut config, campaign()?),
             Campaign::ListUpdates  => Campaigner::list_updates(&mut config,),
             Campaign::CreateUpdate  => Campaigner::create_update(&mut config, update()?, name(), description())
-        }.and_then(reply)
+        }
+            .map(|r| r.into())
+            .and_then(reply)
     }
 }
 
@@ -116,7 +117,6 @@ impl FromStr for Campaign {
     }
 }
 
-
 /// Available device sub-commands.
 #[derive(Serialize, Deserialize, PartialEq, Clone, Copy, Debug)]
 pub enum Device {
@@ -126,7 +126,7 @@ pub enum Device {
 }
 
 impl<'a> Exec<'a> for Device {
-    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(Response) -> Result<()>) -> Result<()> {
+    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(PrintableH) -> Result<()>) -> Result<()> {
         let mut config = Config::load_default()?;
         let device = || args.value_of("device").expect("--device").parse();
         let name = || args.value_of("name").expect("--name");
@@ -137,7 +137,9 @@ impl<'a> Exec<'a> for Device {
             Device::List   => Registry::list_device_args(&mut config, args),
             Device::Create => Registry::create_device(&mut config, name(), id(), DeviceType::from_args(args)?),
             Device::Delete => Registry::delete_device(&mut config, device()?),
-        }.and_then(reply)
+        }
+            .map(|r| r.into())
+            .and_then(reply)
     }
 }
 
@@ -155,7 +157,6 @@ impl FromStr for Device {
     }
 }
 
-
 /// Available group sub-commands.
 #[derive(Serialize, Deserialize, PartialEq, Clone, Copy, Debug)]
 pub enum Group {
@@ -167,7 +168,7 @@ pub enum Group {
 }
 
 impl<'a> Exec<'a> for Group {
-    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(Response) -> Result<()>) -> Result<()> {
+    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(PrintableH) -> Result<()>) -> Result<()> {
         let mut config = Config::load_default()?;
         let group = || args.value_of("group").expect("--group").parse();
         let device = || args.value_of("device").expect("--device").parse();
@@ -180,7 +181,9 @@ impl<'a> Exec<'a> for Group {
             Group::Add    => Registry::add_to_group(&mut config, group()?, device()?),
             Group::Remove => Registry::remove_from_group(&mut config, group()?, device()?),
             Group::Rename => Registry::rename_group(&mut config, group()?, name()),
-        }.and_then(reply)
+        }
+            .map(|r| r.into())
+            .and_then(reply)
     }
 }
 
@@ -200,7 +203,6 @@ impl FromStr for Group {
     }
 }
 
-
 /// Available package sub-commands.
 #[derive(Serialize, Deserialize, PartialEq, Clone, Copy, Debug)]
 pub enum Package {
@@ -211,7 +213,7 @@ pub enum Package {
 }
 
 impl<'a> Exec<'a> for Package {
-    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(Response) -> Result<()>) -> Result<()> {
+    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(PrintableH) -> Result<()>) -> Result<()> {
         let mut config = Config::load_default()?;
         let name = || args.value_of("name").expect("--name");
         let version = || args.value_of("version").expect("--version");
@@ -219,11 +221,13 @@ impl<'a> Exec<'a> for Package {
 
         #[cfg_attr(rustfmt, rustfmt_skip)]
         match self {
-            Package::List   => Reposerver::list_packages(&mut config,),
+            Package::List   => Reposerver::list_packages(&mut config),
             Package::Add    => Reposerver::add_package(&mut config, TufPackage::from_args(args)?),
             Package::Fetch  => Reposerver::get_package(&mut config, name(), version()),
             Package::Upload => Reposerver::add_packages(&mut config, TufPackages::from(TargetPackages::from_file(packages())?)?),
-        }.and_then(reply)
+        }
+            .map(|r| r.into())
+            .and_then(reply)
     }
 }
 
@@ -242,16 +246,15 @@ impl FromStr for Package {
     }
 }
 
-
 /// Available update sub-commands.
 #[derive(Serialize, Deserialize, PartialEq, Clone, Copy, Debug)]
 pub enum Update {
     Create,
-    Launch
+    Launch,
 }
 
 impl<'a> Exec<'a> for Update {
-    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(Response) -> Result<()>) -> Result<()> {
+    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(PrintableH) -> Result<()>) -> Result<()> {
         let mut config = Config::load_default()?;
         let update = || args.value_of("update").expect("--update").parse();
         let device = || args.value_of("device").expect("--device").parse();
@@ -261,6 +264,7 @@ impl<'a> Exec<'a> for Update {
             Update::Create => Director::create_mtu(&mut config, &TufUpdates::from(TargetRequests::from_file(targets())?)?),
             Update::Launch => Director::launch_mtu(&mut config, update()?, device()?),
         }
+        .map(|r| r.into())
         .and_then(reply)
     }
 }

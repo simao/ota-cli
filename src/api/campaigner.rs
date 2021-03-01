@@ -6,7 +6,6 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::http::{Http, HttpMethods};
 
-
 /// Available Campaigner API methods.
 pub trait CampaignerApi {
     fn create_campaign(_: &mut Config, update: Uuid, name: &str, groups: &[Uuid]) -> Result<Response>;

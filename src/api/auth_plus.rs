@@ -7,9 +7,8 @@ use zip::ZipArchive;
 use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::http::Http;
-use serde::Serialize;
 use serde::Deserialize;
-
+use serde::Serialize;
 
 /// Available Auth+ API methods.
 pub trait AuthPlusApi {
@@ -38,7 +37,6 @@ impl AuthPlusApi for AuthPlus {
     }
 }
 
-
 /// Access token used to authenticate HTTP requests.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AccessToken {
@@ -64,13 +62,12 @@ impl AccessToken {
     }
 }
 
-
 /// Parsed credentials from `treehub.json` in `credentials.zip`.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Credentials {
     no_auth: Option<bool>,
-    oauth2:  Option<OAuth2>,
-    ostree:  Ostree,
+    oauth2: Option<OAuth2>,
+    ostree: Ostree,
 }
 
 impl Credentials {
@@ -95,8 +92,8 @@ impl Credentials {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct OAuth2 {
-    server:        String,
-    client_id:     String,
+    server: String,
+    client_id: String,
     client_secret: String,
 }
 

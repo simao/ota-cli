@@ -1,7 +1,7 @@
 use clap::ArgMatches;
 use dirs;
+use serde::{Deserialize, Serialize};
 use serde_json;
-use serde::{Serialize, Deserialize};
 use std::{
     fs::{self, File, OpenOptions},
     io::{BufReader, ErrorKind, Read, Write},
@@ -13,7 +13,6 @@ use zip::ZipArchive;
 
 use crate::api::auth_plus::{AccessToken, AuthPlus, AuthPlusApi, Credentials};
 use crate::error::{Error, Result};
-
 
 const CONFIG_FILE: &str = ".ota.conf";
 
@@ -63,10 +62,14 @@ impl<'a> Config {
     }
 
     /// Save the default config file.
-    pub fn save_default(&self) -> Result<()> { self.save(Self::default_path()) }
+    pub fn save_default(&self) -> Result<()> {
+        self.save(Self::default_path())
+    }
 
     /// Load the default config file.
-    pub fn load_default() -> Result<Self> { Self::load(Self::default_path()) }
+    pub fn load_default() -> Result<Self> {
+        Self::load(Self::default_path())
+    }
 
     /// Save the current config.
     pub fn save(&self, path: impl AsRef<Path>) -> Result<()> {
