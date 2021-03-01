@@ -1,29 +1,58 @@
-use clap::ArgMatches;
-use reqwest::blocking::multipart::Form;
-use reqwest::blocking::{Client, Response};
-use std::{collections::HashMap, fs, path::Path};
-use toml;
-use url::Url;
-use urlencoding;
-use serde::{Serialize, Deserialize};
 use crate::api::director::TargetFormat;
 use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::http::{Http, HttpMethods};
+use clap::ArgMatches;
+use reqwest::blocking::multipart::Form;
+use reqwest::blocking::Client;
+use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, fs, path::Path};
+use toml;
+use url::Url;
+use urlencoding;
+use comfy_table::Table;
+use crate::command::{CommandResult, TableResult};
+use std::io::Read;
 
+#[derive(Deserialize)]
+struct TargetRole {
+    signed: Targets
+}
+
+#[derive(Deserialize)]
+struct Targets {
+    targets: HashMap<String, Target>
+}
+
+#[derive(Deserialize)]
+struct Target {
+    custom: Custom
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct Custom {
+    name: String,
+    version: String,
+    hardware_ids: Vec<String>,
+    uri: Option<Url>,
+    updated_at: String,
+    target_format: TargetFormat,
+}
 
 /// Available TUF Reposerver API methods.
 pub trait ReposerverApi {
-    fn add_package(_: &mut Config, package: TufPackage) -> Result<Response>;
-    fn get_package(_: &mut Config, name: &str, version: &str) -> Result<Response>;
-    fn list_packages(_: &mut Config) -> Result<Response>;
+    fn add_package(_: &mut Config, package: TufPackage) -> Result<CommandResult>;
+    fn get_package(_: &mut Config, name: &str, version: &str) -> Result<CommandResult>;
+    fn list_packages(_: &mut Config) -> Result<CommandResult>;
 }
 
 /// Make API calls to the TUF Reposerver.
 pub struct Reposerver;
 
+
 impl ReposerverApi for Reposerver {
-    fn add_package(config: &mut Config, package: TufPackage) -> Result<Response> {
+    fn add_package(config: &mut Config, package: TufPackage) -> Result<CommandResult> {
         let entry = format!("{}-{}", package.name, package.version);
         debug!("adding package with entry name {}", entry);
         let req = Client::new()
@@ -38,23 +67,41 @@ impl ReposerverApi for Reposerver {
                 RepoTarget::Path(path) => Form::new().file("file", path)?,
                 RepoTarget::Url(url) => Form::new().file("fileUri", url.as_str())?,
             });
-        Http::send(req, config.token()?)
+        Ok(Http::send(req, config.token()?)?.into())
     }
 
-    fn get_package(config: &mut Config, name: &str, version: &str) -> Result<Response> {
+    fn get_package(config: &mut Config, name: &str, version: &str) -> Result<CommandResult> {
         let entry = format!("{}_{}", name, version);
         debug!("fetching package with entry name {}", entry);
-        Http::get(&format!("{}api/v1/user_repo/targets/{}", config.reposerver, entry), config.token()?)
+        Ok(Http::get(&format!("{}api/v1/user_repo/targets/{}", config.reposerver, entry), config.token()?)?.into())
     }
 
-    fn list_packages(config: &mut Config) -> Result<Response> {
-        Http::get(&format!("{}api/v1/user_repo/targets.json", config.reposerver), config.token()?)
+    fn list_packages(config: &mut Config) -> Result<CommandResult> {
+        let mut res = Http::get(&format!("{}api/v1/user_repo/targets.json", config.reposerver), config.token()?)?;
+        let h = res.headers().to_owned();
+        let mut str_resp: Vec<u8> = vec![];
+        res.read_to_end(&mut str_resp)?;
+
+        let v: TargetRole = serde_json::from_slice(&str_resp)?;
+
+        let mut table = Table::new();
+
+        table.set_header(vec!["name", "name", "version", "hardware ids", "uri", "target_format", "updated at"]);
+
+        for (k, v) in v.signed.targets {
+            let hwids = format!("{}", v.custom.hardware_ids.join(", "));
+            let uri = v.custom.uri.map(|u| u.to_string()).unwrap_or("None".to_owned()) ;
+            let target_format = format!("{:?}", v.custom.target_format);
+            table.add_row(vec![k, v.custom.name, v.custom.version, hwids, uri, target_format, v.custom.updated_at]);
+        }
+
+        Ok(TableResult::new(h, str_resp, table).into())
     }
 }
 
 impl Reposerver {
     /// Upload multiple packages (without batching), returning the final response.
-    pub fn add_packages(config: &mut Config, packages: TufPackages) -> Result<Response> {
+    pub fn add_packages(config: &mut Config, packages: TufPackages) -> Result<CommandResult> {
         let mut responses = packages
             .packages
             .into_iter()
@@ -65,14 +112,13 @@ impl Reposerver {
     }
 }
 
-
 /// Parsed TOML package metadata.
 #[derive(Serialize, Deserialize)]
 pub struct PackageMetadata {
-    format:   TargetFormat,
+    format: TargetFormat,
     hardware: Vec<String>,
-    path:     Option<String>,
-    url:      Option<String>,
+    path: Option<String>,
+    url: Option<String>,
 }
 
 /// A parsed mapping from package names to versions to metadata.
@@ -90,26 +136,25 @@ impl TargetPackages {
     }
 }
 
-
 /// A package target for uploading to the TUF Reposerver.
 #[derive(Serialize, Deserialize)]
 pub struct TufPackage {
-    name:     String,
-    version:  String,
-    format:   TargetFormat,
+    name: String,
+    version: String,
+    format: TargetFormat,
     hardware: Vec<String>,
-    target:   RepoTarget,
+    target: RepoTarget,
 }
 
 impl<'a> TufPackage {
     /// Parse CLI arguments into a `TufPackage`.
     pub fn from_args(args: &ArgMatches<'a>) -> Result<Self> {
         Ok(TufPackage {
-            name:     args.value_of("name").expect("--name").into(),
-            version:  args.value_of("version").expect("--version").into(),
-            format:   TargetFormat::from_args(&args)?,
+            name: args.value_of("name").expect("--name").into(),
+            version: args.value_of("version").expect("--version").into(),
+            format: TargetFormat::from_args(&args)?,
             hardware: args.values_of("hardware").expect("--hardware").map(String::from).collect(),
-            target:   RepoTarget::from_args(&args)?,
+            target: RepoTarget::from_args(&args)?,
         })
     }
 }
@@ -178,11 +223,9 @@ impl<'a> RepoTarget {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
 
     #[test]
     fn parse_example_packages() {

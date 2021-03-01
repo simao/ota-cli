@@ -10,11 +10,12 @@ use log::LevelFilter;
 use ota::{
     command::{Command, Exec},
     error::Result,
-    http::Http,
 };
+
 
 fn main() -> Result<()> {
     let args = parse_args();
+
     pretty_env_logger::formatted_builder()
         .filter(None, LevelFilter::max())
         .filter(Some("tokio"), LevelFilter::Info)
@@ -24,7 +25,11 @@ fn main() -> Result<()> {
     let (cmd, args) = args.subcommand();
     let cmd = cmd.parse::<Command>()?;
     let args = args.expect("cli args");
-    cmd.exec(args, Http::print_response)
+    let use_tables: bool = args.occurrences_of("usetables") > 0;
+
+    let result = cmd.exec(args)?;
+
+    ota::command::print_command_result(use_tables, result)
 }
 
 fn parse_args<'a>() -> ArgMatches<'a> {
@@ -37,6 +42,8 @@ fn parse_args<'a>() -> ArgMatches<'a> {
       (setting: AppSettings::UnifiedHelpMessage)
 
       (@arg level: -l --level [level] +global "Set the logging level")
+
+      (@arg usetables: --("use-tables") +global "Show a table with the result instead of server json")
 
       (@subcommand init =>
         (about: "Set config values before starting")

@@ -19,3 +19,4 @@ url = { version = "2", features = ["serde"] }
 urlencoding = "1"
 uuid = { version = "0.8", features = ["serde"] }
 zip = "0.5"
+comfy-table = "2"

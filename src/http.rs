@@ -1,7 +1,5 @@
 use reqwest::blocking::{Client, RequestBuilder, Response};
 use reqwest::Url;
-use serde_json::{self, Value};
-use std::io::{self, Read};
 
 use crate::api::auth_plus::AccessToken;
 use crate::error::{Error, Result};
@@ -22,7 +20,6 @@ pub trait HttpMethods {
     }
 }
 
-
 /// Make HTTP requests to server endpoints.
 pub struct Http;
 
@@ -36,8 +33,7 @@ impl Http {
             builder = builder.bearer_auth(token.access_token.clone());
 
             match token.namespace() {
-                Ok(name) =>
-                    builder = builder.header("x-ats-namespace", name),
+                Ok(name) => builder = builder.header("x-ats-namespace", name),
                 Err(err) => {
                     error!("reading token namespace: {}", err)
                 }
@@ -46,28 +42,12 @@ impl Http {
 
         let req = builder.build()?;
         if req.headers().len() > 0 {
-            info!("request headers:\n{:#?}", req.headers());
+            debug!("request headers:\n{:#?}", req.headers());
         }
         if let Some(body) = req.body() {
-            info!("request body:\n{:#?}\n", body);
+            debug!("request body:\n{:#?}\n", body);
         }
 
         Client::new().execute(req).map_err(Error::Http)
-    }
-
-    /// Print the HTTP response to stdout.
-    pub fn print_response(mut resp: Response) -> Result<()> {
-        let mut body = Vec::new();
-        debug!("response headers:\n{:#?}", resp.headers());
-        debug!("response length: {}\n", resp.read_to_end(&mut body)?);
-
-        let out = if let Ok(json) = serde_json::from_slice::<Value>(&body) {
-            serde_json::to_vec_pretty(&json)?
-        } else {
-            body
-        };
-
-        let _ = io::copy(&mut out.as_slice(), &mut io::stdout())?;
-        Ok(())
     }
 }
