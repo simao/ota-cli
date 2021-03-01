@@ -43,10 +43,10 @@ impl Http {
 
         let req = builder.build()?;
         if req.headers().len() > 0 {
-            debug!("request headers:\n{:#?}", req.headers());
+            info!("request headers:\n{:#?}", req.headers());
         }
         if let Some(body) = req.body() {
-            debug!("request body:\n{:?}\n", body);
+            info!("request body:\n{:?}\n", body);
         }
 
         Client::new().execute(req).map_err(Error::Http)

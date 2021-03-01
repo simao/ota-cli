@@ -50,7 +50,7 @@ impl AccessToken {
             .scope
             .split_whitespace()
             .filter(|s| s.starts_with("namespace."))
-            .map(|s| s.trim_left_matches("namespace."))
+            .map(|s| s.trim_start_matches("namespace."))
             .collect::<Vec<_>>();
 
         match scopes.len() {
