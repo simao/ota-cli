@@ -47,6 +47,7 @@ fn parse_args<'a>() -> ArgMatches<'a> {
         (@arg campaigner: -c --campaigner <url> "Campaigner URL")
         (@arg director: -d --director <url> "Director URL")
         (@arg registry: -r --registry <url> "Device Registry URL")
+        (@arg reposerver: -t --reposerver [url] "Reposerver URL. Overrides reposerver URL inc credentials.zip")
       )
 
       (@subcommand campaign =>
@@ -201,11 +202,9 @@ fn parse_args<'a>() -> ArgMatches<'a> {
         (setting: AppSettings::InferSubcommands)
         (setting: AppSettings::UnifiedHelpMessage)
 
-       /*
         (@subcommand list =>
           (about: "List available packages")
         )
-       */
 
         (@subcommand add =>
           (about: "Add a single package")

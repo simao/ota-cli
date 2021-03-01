@@ -218,7 +218,7 @@ impl<'a> Exec<'a> for Package {
 
         #[cfg_attr(rustfmt, rustfmt_skip)]
         match self {
-            Package::List   => panic!("API not yet supported"),
+            Package::List   => Reposerver::list_packages(&mut config),
             Package::Add    => Reposerver::add_package(&mut config, TufPackage::from_args(args)?),
             Package::Fetch  => Reposerver::get_package(&mut config, name(), version()),
             Package::Upload => Reposerver::add_packages(&mut config, TufPackages::from(TargetPackages::from_file(packages())?)?),

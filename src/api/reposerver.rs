@@ -16,6 +16,7 @@ use http::{Http, HttpMethods};
 pub trait ReposerverApi {
     fn add_package(&mut Config, package: TufPackage) -> Result<Response>;
     fn get_package(&mut Config, name: &str, version: &str) -> Result<Response>;
+    fn list_packages(&mut Config) -> Result<Response>;
 }
 
 /// Make API calls to the TUF Reposerver.
@@ -44,6 +45,10 @@ impl ReposerverApi for Reposerver {
         let entry = format!("{}_{}", name, version);
         debug!("fetching package with entry name {}", entry);
         Http::get(&format!("{}api/v1/user_repo/targets/{}", config.reposerver, entry), config.token()?)
+    }
+
+    fn list_packages(config: &mut Config) -> Result<Response> {
+        Http::get(&format!("{}api/v1/user_repo/targets.json", config.reposerver), config.token()?)
     }
 }
 
