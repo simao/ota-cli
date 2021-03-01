@@ -26,7 +26,10 @@ impl AuthPlusApi for AuthPlus {
                 .post(&format!("{}/token", oauth2.server))
                 .basic_auth(oauth2.client_id, Some(oauth2.client_secret))
                 .form(&[("grant_type", "client_credentials")]);
-            Ok(Some(Http::send(req, None)?.json()?))
+
+            let resp = Http::send(req, None)?.json()?;
+            debug!("{:?}", resp);
+            Ok(Some(resp))
         } else {
             debug!("skipping oauth2 authentication...");
             Ok(None)
@@ -39,22 +42,21 @@ impl AuthPlusApi for AuthPlus {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AccessToken {
     pub access_token: String,
-    pub token_type:   String,
-    pub expires_in:   i32,
-    pub scope:        String,
+    pub scope: Option<String>,
 }
 
 impl AccessToken {
-    pub fn namespace(&self) -> Result<&str> {
-        let scopes = self
-            .scope
+    pub fn namespace(&self) -> Result<String> {
+        let token_scope = self.scope.clone().unwrap_or("".to_owned()).clone();
+
+        let scopes = token_scope
             .split_whitespace()
             .filter(|s| s.starts_with("namespace."))
             .map(|s| s.trim_start_matches("namespace."))
             .collect::<Vec<_>>();
 
         match scopes.len() {
-            1 => Ok(scopes.first().unwrap()),
+            1 => Ok(scopes.first().unwrap().to_string()),
             0 => Err(Error::Token("namespace not found".into())),
             _ => Err(Error::Token(format!("multiple namespaces found: {:?}", scopes))),
         }
