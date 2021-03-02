@@ -1,22 +1,27 @@
-use clap::ArgMatches;
-use reqwest::Response;
+use std::collections::HashMap;
+use std::io::{self, Read};
 use std::str::FromStr;
 
-use api::{
+use clap::ArgMatches;
+use reqwest::blocking::Response;
+use reqwest::header::HeaderMap;
+use serde::Deserialize;
+use serde::Serialize;
+use serde_json::Value;
+
+use crate::api::{
     campaigner::{Campaigner, CampaignerApi},
     director::{Director, DirectorApi, TargetRequests, TufUpdates},
     registry::{DeviceType, GroupType, Registry, RegistryApi},
     reposerver::{Reposerver, ReposerverApi, TargetPackages, TufPackage, TufPackages},
 };
-use config::Config;
-use error::{Error, Result};
-
+use crate::config::Config;
+use crate::error::{Error, Result};
 
 /// Execute a command then handle the HTTP `Response`.
 pub trait Exec<'a> {
-    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(Response) -> Result<()>) -> Result<()>;
+    fn exec(&self, args: &ArgMatches<'a>) -> Result<CommandResult>;
 }
-
 
 /// Available CLI sub-commands.
 #[derive(Serialize, Deserialize, PartialEq, Clone, Copy, Debug)]
@@ -29,20 +34,111 @@ pub enum Command {
     Update,
 }
 
+pub enum CommandResult {
+    Table(TableResult),
+    Http(Response),
+    Empty,
+}
+
+impl CommandResult {
+    fn headers(self: &Self) -> HashMap<String, String> {
+        let empty = HeaderMap::new();
+
+        let headers = match self {
+            CommandResult::Table(r) => &r.headers,
+            CommandResult::Http(r) => &r.headers(),
+            CommandResult::Empty => &empty,
+        };
+
+        let mut res: HashMap<String, String> = HashMap::new();
+
+        for (k, v) in headers.iter() {
+            res.insert(k.to_string(), v.to_str().unwrap_or("").to_owned());
+        }
+
+        res
+    }
+}
+
+impl From<Response> for CommandResult {
+    fn from(r: Response) -> Self {
+        CommandResult::Http(r)
+    }
+}
+
+impl From<TableResult> for CommandResult {
+    fn from(r: TableResult) -> Self {
+        CommandResult::Table(r)
+    }
+}
+
+pub struct TableResult {
+    pub headers: HeaderMap,
+    pub table: comfy_table::Table,
+    pub response: Vec<u8>,
+}
+
+impl TableResult {
+    pub fn new(headers: HeaderMap, response: Vec<u8>, table: comfy_table::Table) -> TableResult {
+        TableResult { headers, table, response }
+    }
+}
+
+pub fn print_command_result(use_tables: bool, resp: CommandResult) -> Result<()> {
+    debug!("response headers:\n{:#?}", resp.headers());
+
+    match resp {
+        CommandResult::Table(r) if use_tables => {
+            io::copy(&mut r.table.to_string().as_bytes(), &mut io::stdout())?;
+            ()
+        }
+
+        CommandResult::Table(r) => {
+            print_http_response(&mut r.response.as_slice())?;
+            ()
+        }
+
+        CommandResult::Http(mut r) => {
+            print_http_response(&mut r)?;
+            ()
+        }
+
+        CommandResult::Empty => (),
+    }
+
+    Ok(())
+}
+
+fn print_http_response(resp: &mut dyn Read) -> Result<()> {
+    let mut body = Vec::new();
+    debug!("response length: {}\n", resp.read_to_end(&mut body)?);
+
+    let out = if let Ok(json) = serde_json::from_slice::<Value>(&body) {
+        serde_json::to_vec_pretty(&json)?
+    } else {
+        body
+    };
+
+    io::copy(&mut out.as_slice(), &mut io::stdout())?;
+
+    Ok(())
+}
+
 impl<'a> Exec<'a> for Command {
-    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(Response) -> Result<()>) -> Result<()> {
+    fn exec(&self, args: &ArgMatches<'a>) -> Result<CommandResult> {
         if let Command::Init = self {
-            Config::init_from_args(args)
+            Config::init_from_args(args)?;
+            Ok(CommandResult::Empty)
         } else {
             let (cmd, args) = args.subcommand();
             let args = args.expect("sub-command args");
             #[cfg_attr(rustfmt, rustfmt_skip)]
             match self {
-                Command::Campaign => cmd.parse::<Campaign>()?.exec(args, reply),
-                Command::Device   => cmd.parse::<Device>()?.exec(args, reply),
-                Command::Group    => cmd.parse::<Group>()?.exec(args, reply),
-                Command::Package  => cmd.parse::<Package>()?.exec(args, reply),
-                Command::Update   => cmd.parse::<Update>()?.exec(args, reply),
+                Command::Campaign => cmd.parse::<Campaign>()?.exec(args),
+                Command::Device   => cmd.parse::<Device>()?.exec(args),
+                Command::Group    => cmd.parse::<Group>()?.exec(args),
+                Command::Package  => cmd.parse::<Package>()?.exec(args),
+                Command::Update   => cmd.parse::<Update>()?.exec(args),
                 Command::Init     => unreachable!()
             }
         }
@@ -66,7 +162,6 @@ impl FromStr for Command {
     }
 }
 
-
 /// Available campaign sub-commands.
 #[derive(Serialize, Deserialize, PartialEq, Clone, Copy, Debug)]
 pub enum Campaign {
@@ -79,7 +174,7 @@ pub enum Campaign {
 }
 
 impl<'a> Exec<'a> for Campaign {
-    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(Response) -> Result<()>) -> Result<()> {
+    fn exec(&self, args: &ArgMatches<'a>) -> Result<CommandResult> {
         let mut config = Config::load_default()?;
         let campaign = || args.value_of("campaign").expect("--campaign").parse();
         let update = || args.value_of("update").expect("--update").parse();
@@ -92,9 +187,10 @@ impl<'a> Exec<'a> for Campaign {
             Campaign::Create => Campaigner::create_from_args(&mut config, args),
             Campaign::Launch => Campaigner::launch_campaign(&mut config, campaign()?),
             Campaign::Cancel => Campaigner::cancel_campaign(&mut config, campaign()?),
-            Campaign::ListUpdates  => Campaigner::list_updates(&mut config),
+            Campaign::ListUpdates  => Campaigner::list_updates(&mut config,),
             Campaign::CreateUpdate  => Campaigner::create_update(&mut config, update()?, name(), description())
-        }.and_then(reply)
+        }
+            .map(|r| r.into())
     }
 }
 
@@ -115,7 +211,6 @@ impl FromStr for Campaign {
     }
 }
 
-
 /// Available device sub-commands.
 #[derive(Serialize, Deserialize, PartialEq, Clone, Copy, Debug)]
 pub enum Device {
@@ -125,7 +220,7 @@ pub enum Device {
 }
 
 impl<'a> Exec<'a> for Device {
-    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(Response) -> Result<()>) -> Result<()> {
+    fn exec(&self, args: &ArgMatches<'a>) -> Result<CommandResult> {
         let mut config = Config::load_default()?;
         let device = || args.value_of("device").expect("--device").parse();
         let name = || args.value_of("name").expect("--name");
@@ -136,7 +231,8 @@ impl<'a> Exec<'a> for Device {
             Device::List   => Registry::list_device_args(&mut config, args),
             Device::Create => Registry::create_device(&mut config, name(), id(), DeviceType::from_args(args)?),
             Device::Delete => Registry::delete_device(&mut config, device()?),
-        }.and_then(reply)
+        }
+            .map(|r| r.into())
     }
 }
 
@@ -154,7 +250,6 @@ impl FromStr for Device {
     }
 }
 
-
 /// Available group sub-commands.
 #[derive(Serialize, Deserialize, PartialEq, Clone, Copy, Debug)]
 pub enum Group {
@@ -166,7 +261,7 @@ pub enum Group {
 }
 
 impl<'a> Exec<'a> for Group {
-    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(Response) -> Result<()>) -> Result<()> {
+    fn exec(&self, args: &ArgMatches<'a>) -> Result<CommandResult> {
         let mut config = Config::load_default()?;
         let group = || args.value_of("group").expect("--group").parse();
         let device = || args.value_of("device").expect("--device").parse();
@@ -179,7 +274,8 @@ impl<'a> Exec<'a> for Group {
             Group::Add    => Registry::add_to_group(&mut config, group()?, device()?),
             Group::Remove => Registry::remove_from_group(&mut config, group()?, device()?),
             Group::Rename => Registry::rename_group(&mut config, group()?, name()),
-        }.and_then(reply)
+        }
+            .map(|r| r.into())
     }
 }
 
@@ -199,7 +295,6 @@ impl FromStr for Group {
     }
 }
 
-
 /// Available package sub-commands.
 #[derive(Serialize, Deserialize, PartialEq, Clone, Copy, Debug)]
 pub enum Package {
@@ -210,7 +305,7 @@ pub enum Package {
 }
 
 impl<'a> Exec<'a> for Package {
-    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(Response) -> Result<()>) -> Result<()> {
+    fn exec(&self, args: &ArgMatches<'a>) -> Result<CommandResult> {
         let mut config = Config::load_default()?;
         let name = || args.value_of("name").expect("--name");
         let version = || args.value_of("version").expect("--version");
@@ -222,7 +317,8 @@ impl<'a> Exec<'a> for Package {
             Package::Add    => Reposerver::add_package(&mut config, TufPackage::from_args(args)?),
             Package::Fetch  => Reposerver::get_package(&mut config, name(), version()),
             Package::Upload => Reposerver::add_packages(&mut config, TufPackages::from(TargetPackages::from_file(packages())?)?),
-        }.and_then(reply)
+        }
+            .map(|r| r.into())
     }
 }
 
@@ -241,16 +337,15 @@ impl FromStr for Package {
     }
 }
 
-
 /// Available update sub-commands.
 #[derive(Serialize, Deserialize, PartialEq, Clone, Copy, Debug)]
 pub enum Update {
     Create,
-    Launch
+    Launch,
 }
 
 impl<'a> Exec<'a> for Update {
-    fn exec(&self, args: &ArgMatches<'a>, reply: impl FnOnce(Response) -> Result<()>) -> Result<()> {
+    fn exec(&self, args: &ArgMatches<'a>) -> Result<CommandResult> {
         let mut config = Config::load_default()?;
         let update = || args.value_of("update").expect("--update").parse();
         let device = || args.value_of("device").expect("--device").parse();
@@ -260,7 +355,7 @@ impl<'a> Exec<'a> for Update {
             Update::Create => Director::create_mtu(&mut config, &TufUpdates::from(TargetRequests::from_file(targets())?)?),
             Update::Launch => Director::launch_mtu(&mut config, update()?, device()?),
         }
-        .and_then(reply)
+        .map(|r| r.into())
     }
 }
 

@@ -1,5 +1,6 @@
 use clap::ArgMatches;
 use dirs;
+use serde::{Deserialize, Serialize};
 use serde_json;
 use std::{
     fs::{self, File, OpenOptions},
@@ -8,12 +9,10 @@ use std::{
     str::FromStr,
 };
 use url::Url;
-use url_serde;
 use zip::ZipArchive;
 
-use api::auth_plus::{AccessToken, AuthPlus, AuthPlusApi, Credentials};
-use error::{Error, Result};
-
+use crate::api::auth_plus::{AccessToken, AuthPlus, AuthPlusApi, Credentials};
+use crate::error::{Error, Result};
 
 const CONFIG_FILE: &str = ".ota.conf";
 
@@ -26,13 +25,9 @@ pub struct Config {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub token: Option<AccessToken>,
 
-    #[serde(with = "url_serde")]
     pub campaigner: Url,
-    #[serde(with = "url_serde")]
     pub director: Url,
-    #[serde(with = "url_serde")]
     pub registry: Url,
-    #[serde(with = "url_serde")]
     pub reposerver: Url,
 }
 
@@ -67,10 +62,14 @@ impl<'a> Config {
     }
 
     /// Save the default config file.
-    pub fn save_default(&self) -> Result<()> { self.save(Self::default_path()) }
+    pub fn save_default(&self) -> Result<()> {
+        self.save(Self::default_path())
+    }
 
     /// Load the default config file.
-    pub fn load_default() -> Result<Self> { Self::load(Self::default_path()) }
+    pub fn load_default() -> Result<Self> {
+        Self::load(Self::default_path())
+    }
 
     /// Save the current config.
     pub fn save(&self, path: impl AsRef<Path>) -> Result<()> {

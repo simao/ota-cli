@@ -9,7 +9,6 @@ use url;
 use uuid;
 use zip;
 
-
 /// Bind the error branch to `Error`.
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -27,7 +26,7 @@ pub enum Error {
     Json(serde_json::Error),
     Toml(toml::de::Error),
     Url(url::ParseError),
-    Uuid(uuid::parser::ParseError),
+    Uuid(uuid::Error),
     Zip(zip::result::ZipError),
 }
 
@@ -58,37 +57,55 @@ impl Display for Error {
 }
 
 impl Debug for Error {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result { write!(f, "{}", self) }
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", self)
+    }
 }
 
 impl std::error::Error for Error {
-    fn description(&self) -> &str { "ota-cli error" }
+    fn description(&self) -> &str {
+        "ota-cli error"
+    }
 }
 
 impl From<reqwest::Error> for Error {
-    fn from(err: reqwest::Error) -> Self { Error::Http(err) }
+    fn from(err: reqwest::Error) -> Self {
+        Error::Http(err)
+    }
 }
 
 impl From<std::io::Error> for Error {
-    fn from(err: std::io::Error) -> Self { Error::Io(err) }
+    fn from(err: std::io::Error) -> Self {
+        Error::Io(err)
+    }
 }
 
 impl From<serde_json::Error> for Error {
-    fn from(err: serde_json::Error) -> Self { Error::Json(err) }
+    fn from(err: serde_json::Error) -> Self {
+        Error::Json(err)
+    }
 }
 
 impl From<toml::de::Error> for Error {
-    fn from(err: toml::de::Error) -> Self { Error::Toml(err) }
+    fn from(err: toml::de::Error) -> Self {
+        Error::Toml(err)
+    }
 }
 
 impl From<url::ParseError> for Error {
-    fn from(err: url::ParseError) -> Self { Error::Url(err) }
+    fn from(err: url::ParseError) -> Self {
+        Error::Url(err)
+    }
 }
 
-impl From<uuid::parser::ParseError> for Error {
-    fn from(err: uuid::parser::ParseError) -> Self { Error::Uuid(err) }
+impl From<uuid::Error> for Error {
+    fn from(err: uuid::Error) -> Self {
+        Error::Uuid(err)
+    }
 }
 
 impl From<zip::result::ZipError> for Error {
-    fn from(err: zip::result::ZipError) -> Self { Error::Zip(err) }
+    fn from(err: zip::result::ZipError) -> Self {
+        Error::Zip(err)
+    }
 }

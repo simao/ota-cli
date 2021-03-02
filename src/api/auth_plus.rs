@@ -1,18 +1,18 @@
-use reqwest::Client;
+use reqwest::blocking::Client;
 use serde_json;
 use std::{fs::File, io::BufReader, path::Path};
 use url::Url;
-use url_serde;
 use zip::ZipArchive;
 
-use config::Config;
-use error::{Error, Result};
-use http::Http;
-
+use crate::config::Config;
+use crate::error::{Error, Result};
+use crate::http::Http;
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Available Auth+ API methods.
 pub trait AuthPlusApi {
-    fn refresh_token(&mut Config) -> Result<Option<AccessToken>>;
+    fn refresh_token(_: &mut Config) -> Result<Option<AccessToken>>;
 }
 
 /// Make API calls to Auth+.
@@ -36,7 +36,6 @@ impl AuthPlusApi for AuthPlus {
         }
     }
 }
-
 
 /// Access token used to authenticate HTTP requests.
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -63,13 +62,12 @@ impl AccessToken {
     }
 }
 
-
 /// Parsed credentials from `treehub.json` in `credentials.zip`.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Credentials {
     no_auth: Option<bool>,
-    oauth2:  Option<OAuth2>,
-    ostree:  Ostree,
+    oauth2: Option<OAuth2>,
+    ostree: Ostree,
 }
 
 impl Credentials {
@@ -94,13 +92,12 @@ impl Credentials {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct OAuth2 {
-    server:        String,
-    client_id:     String,
+    server: String,
+    client_id: String,
     client_secret: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct Ostree {
-    #[serde(with = "url_serde")]
     server: Url,
 }

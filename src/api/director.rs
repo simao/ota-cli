@@ -1,6 +1,6 @@
 use clap::ArgMatches;
-use reqwest::{Client, Response};
-use serde::{self, Deserialize, Deserializer};
+use reqwest::blocking::{Client, Response};
+use serde::{self, Deserialize, Deserializer, Serialize};
 use std::{
     collections::HashMap,
     fmt::{self, Display, Formatter},
@@ -12,19 +12,17 @@ use std::{
 use toml;
 use uuid::Uuid;
 
-use config::Config;
-use error::{Error, Result};
-use http::{Http, HttpMethods};
-
+use crate::config::Config;
+use crate::error::{Error, Result};
+use crate::http::{Http, HttpMethods};
 
 /// Available director API methods.
 pub trait DirectorApi {
     /// Create a new multi-target update.
-    fn create_mtu(&mut Config, updates: &TufUpdates) -> Result<Response>;
+    fn create_mtu(_: &mut Config, updates: &TufUpdates) -> Result<Response>;
     /// Launch a multi-target update for a device.
-    fn launch_mtu(&mut Config, update: Uuid, device: Uuid) -> Result<Response>;
+    fn launch_mtu(_: &mut Config, update: Uuid, device: Uuid) -> Result<Response>;
 }
-
 
 /// Make API calls to launch multi-target updates.
 pub struct Director;
@@ -47,28 +45,27 @@ impl DirectorApi for Director {
     }
 }
 
-
 /// An identifier for the type of hardware and applicable `Target`s.
 type HardwareId = String;
 
 /// Metadata describing an object that can be applied to an ECU.
 #[derive(Serialize, Deserialize)]
 pub struct TargetObject {
-    pub name:    String,
+    pub name: String,
     pub version: String,
-    pub length:  Option<u64>,
-    pub hash:    Option<String>,
-    pub method:  Option<ChecksumMethod>,
-    pub uri: Option<String>
+    pub length: Option<u64>,
+    pub hash: Option<String>,
+    pub method: Option<ChecksumMethod>,
+    pub uri: Option<String>,
 }
 
 /// A request to update some hardware type to a new `TargetObject`.
 #[derive(Serialize, Deserialize)]
 pub struct TargetRequest {
     pub target_format: Option<TargetFormat>,
-    pub from:          Option<TargetObject>,
-    pub to:            TargetObject,
-    pub generate_diff: Option<bool>
+    pub from: Option<TargetObject>,
+    pub to: TargetObject,
+    pub generate_diff: Option<bool>,
 }
 
 /// Parsed mapping from hardware identifiers to target requests.
@@ -86,7 +83,6 @@ impl TargetRequests {
     }
 }
 
-
 /// A request to update an ECU to a specific `TufTarget`.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TufUpdate {
@@ -96,7 +92,7 @@ pub struct TufUpdate {
     pub from: Option<TufTarget>,
     pub to: TufTarget,
     #[serde(rename = "generateDiff")]
-    pub generate_diff: bool
+    pub generate_diff: bool,
 }
 
 /// A TUF target for an ECU.
@@ -106,7 +102,7 @@ pub struct TufTarget {
     #[serde(rename = "targetLength")]
     pub length: u64,
     pub checksum: Checksum,
-    pub uri: Option<String>
+    pub uri: Option<String>,
 }
 
 /// An update request for each `EcuSerial` to a `TufUpdate` target.
@@ -137,7 +133,7 @@ impl TufUpdates {
             } else {
                 None
             },
-            to: Self::to_target(format, request.to)?
+            to: Self::to_target(format, request.to)?,
         })
     }
 
@@ -151,13 +147,12 @@ impl TufUpdates {
             length,
             checksum: Checksum {
                 method: target.method.unwrap_or(ChecksumMethod::Sha256),
-                hash:   target.hash.unwrap_or(target.version),
+                hash: target.hash.unwrap_or(target.version),
             },
-            uri: target.uri
+            uri: target.uri,
         })
     }
 }
-
 
 /// Available target types.
 #[derive(Serialize, Clone, Copy, Debug, Eq, PartialEq)]
@@ -209,12 +204,11 @@ impl<'de> Deserialize<'de> for TargetFormat {
     }
 }
 
-
 /// The checksum hash for a `TufTarget`.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Checksum {
     pub method: ChecksumMethod,
-    pub hash:   String,
+    pub hash: String,
 }
 
 /// Available checksum methods for target metadata verification.
@@ -244,11 +238,9 @@ impl<'de> Deserialize<'de> for ChecksumMethod {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
 
     #[test]
     fn parse_example_targets() {

@@ -1,24 +1,23 @@
 use clap::ArgMatches;
-use reqwest::{Client, Response};
+use reqwest::blocking::{Client, Response};
 use uuid::Uuid;
 
-use config::Config;
-use error::Result;
-use http::{Http, HttpMethods};
-
+use crate::config::Config;
+use crate::error::Result;
+use crate::http::{Http, HttpMethods};
 
 /// Available Campaigner API methods.
 pub trait CampaignerApi {
-    fn create_campaign(&mut Config, update: Uuid, name: &str, groups: &[Uuid]) -> Result<Response>;
-    fn launch_campaign(&mut Config, campaign: Uuid) -> Result<Response>;
-    fn cancel_campaign(&mut Config, campaign: Uuid) -> Result<Response>;
+    fn create_campaign(_: &mut Config, update: Uuid, name: &str, groups: &[Uuid]) -> Result<Response>;
+    fn launch_campaign(_: &mut Config, campaign: Uuid) -> Result<Response>;
+    fn cancel_campaign(_: &mut Config, campaign: Uuid) -> Result<Response>;
 
-    fn list_updates(&mut Config) -> Result<Response>;
-    fn create_update(&mut Config, update: Uuid, name: &str, description: &str) -> Result<Response>;
+    fn list_updates(_: &mut Config) -> Result<Response>;
+    fn create_update(_: &mut Config, update: Uuid, name: &str, description: &str) -> Result<Response>;
 
-    fn list_campaign_info(&mut Config, campaign: Uuid) -> Result<Response>;
-    fn list_campaign_stats(&mut Config, campaign: Uuid) -> Result<Response>;
-    fn list_all_campaigns(&mut Config) -> Result<Response>;
+    fn list_campaign_info(_: &mut Config, campaign: Uuid) -> Result<Response>;
+    fn list_campaign_stats(_: &mut Config, campaign: Uuid) -> Result<Response>;
+    fn list_all_campaigns(_: &mut Config) -> Result<Response>;
 }
 
 /// Make API calls to manage campaigns.
