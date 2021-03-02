@@ -1,32 +1,32 @@
 use crate::api::director::TargetFormat;
+use crate::command::{CommandResult, TableResult};
 use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::http::{Http, HttpMethods};
 use clap::ArgMatches;
+use comfy_table::Table;
 use reqwest::blocking::multipart::Form;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
+use std::io::Read;
 use std::{collections::HashMap, fs, path::Path};
 use toml;
 use url::Url;
 use urlencoding;
-use comfy_table::Table;
-use crate::command::{CommandResult, TableResult};
-use std::io::Read;
 
 #[derive(Deserialize)]
 struct TargetRole {
-    signed: Targets
+    signed: Targets,
 }
 
 #[derive(Deserialize)]
 struct Targets {
-    targets: HashMap<String, Target>
+    targets: HashMap<String, Target>,
 }
 
 #[derive(Deserialize)]
 struct Target {
-    custom: Custom
+    custom: Custom,
 }
 
 #[derive(Deserialize, Debug)]
@@ -49,7 +49,6 @@ pub trait ReposerverApi {
 
 /// Make API calls to the TUF Reposerver.
 pub struct Reposerver;
-
 
 impl ReposerverApi for Reposerver {
     fn add_package(config: &mut Config, package: TufPackage) -> Result<CommandResult> {
@@ -86,13 +85,29 @@ impl ReposerverApi for Reposerver {
 
         let mut table = Table::new();
 
-        table.set_header(vec!["name", "name", "version", "hardware ids", "uri", "target_format", "updated at"]);
+        table.set_header(vec![
+            "name",
+            "name",
+            "version",
+            "hardware ids",
+            "uri",
+            "target_format",
+            "updated at",
+        ]);
 
         for (k, v) in v.signed.targets {
             let hwids = format!("{}", v.custom.hardware_ids.join(", "));
-            let uri = v.custom.uri.map(|u| u.to_string()).unwrap_or("None".to_owned()) ;
+            let uri = v.custom.uri.map(|u| u.to_string()).unwrap_or("None".to_owned());
             let target_format = format!("{:?}", v.custom.target_format);
-            table.add_row(vec![k, v.custom.name, v.custom.version, hwids, uri, target_format, v.custom.updated_at]);
+            table.add_row(vec![
+                k,
+                v.custom.name,
+                v.custom.version,
+                hwids,
+                uri,
+                target_format,
+                v.custom.updated_at,
+            ]);
         }
 
         Ok(TableResult::new(h, str_resp, table).into())

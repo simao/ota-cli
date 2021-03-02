@@ -18,8 +18,6 @@ use crate::api::{
 use crate::config::Config;
 use crate::error::{Error, Result};
 
-
-
 /// Execute a command then handle the HTTP `Response`.
 pub trait Exec<'a> {
     fn exec(&self, args: &ArgMatches<'a>) -> Result<CommandResult>;
@@ -39,7 +37,7 @@ pub enum Command {
 pub enum CommandResult {
     Table(TableResult),
     Http(Response),
-    Empty
+    Empty,
 }
 
 impl CommandResult {
@@ -77,7 +75,7 @@ impl From<TableResult> for CommandResult {
 pub struct TableResult {
     pub headers: HeaderMap,
     pub table: comfy_table::Table,
-    pub response: Vec<u8>
+    pub response: Vec<u8>,
 }
 
 impl TableResult {
@@ -93,20 +91,19 @@ pub fn print_command_result(use_tables: bool, resp: CommandResult) -> Result<()>
         CommandResult::Table(r) if use_tables => {
             io::copy(&mut r.table.to_string().as_bytes(), &mut io::stdout())?;
             ()
-        },
+        }
 
         CommandResult::Table(r) => {
             print_http_response(&mut r.response.as_slice())?;
             ()
-        },
+        }
 
         CommandResult::Http(mut r) => {
             print_http_response(&mut r)?;
             ()
-        },
+        }
 
-        CommandResult::Empty =>
-            ()
+        CommandResult::Empty => (),
     }
 
     Ok(())

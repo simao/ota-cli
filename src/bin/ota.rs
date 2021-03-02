@@ -12,7 +12,6 @@ use ota::{
     error::Result,
 };
 
-
 fn main() -> Result<()> {
     let args = parse_args();
 
